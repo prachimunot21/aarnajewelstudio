@@ -2,9 +2,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LogIn } from "lucide-react";
+import { useAuth } from "@/lib/context";
 
 const Hero: React.FC = () => {
+  const { isLoggedIn } = useAuth();
+
   return (
     <section className="relative bg-aarna-light py-16 sm:py-24">
       <div className="container-custom relative z-10">
@@ -25,20 +28,34 @@ const Hero: React.FC = () => {
                 asChild
                 className="bg-aarna-primary hover:bg-aarna-dark text-white rounded-md px-6 py-3 h-auto"
               >
-                <Link to="/products">
-                  Shop Collection
+                <Link to="/collections">
+                  Explore Collections
                 </Link>
               </Button>
-              <Button 
-                asChild
-                variant="outline" 
-                className="border-aarna-primary text-aarna-primary hover:bg-aarna-light flex gap-2 items-center rounded-md px-6 py-3 h-auto"
-              >
-                <Link to="/about">
-                  <span>Learn More</span>
-                  <ArrowRight size={16} />
-                </Link>
-              </Button>
+
+              {!isLoggedIn ? (
+                <Button 
+                  asChild
+                  variant="outline" 
+                  className="border-aarna-primary text-aarna-primary hover:bg-aarna-light flex gap-2 items-center rounded-md px-6 py-3 h-auto"
+                >
+                  <Link to="/login">
+                    <LogIn size={16} className="mr-1" />
+                    <span>Sign in to order</span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button 
+                  asChild
+                  variant="outline" 
+                  className="border-aarna-primary text-aarna-primary hover:bg-aarna-light flex gap-2 items-center rounded-md px-6 py-3 h-auto"
+                >
+                  <Link to="/about">
+                    <span>Learn More</span>
+                    <ArrowRight size={16} />
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
           

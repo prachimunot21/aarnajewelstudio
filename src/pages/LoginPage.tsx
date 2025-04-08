@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useAuth } from "@/lib/context";
+import { ShoppingBag } from "lucide-react";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -38,6 +39,15 @@ const LoginPage: React.FC = () => {
             <div className="text-center mb-6">
               <h1 className="text-2xl font-serif mb-2">Sign In</h1>
               <p className="text-gray-600">Welcome back to Aarna Jewel Studio</p>
+            </div>
+            
+            <div className="bg-aarna-light/50 border border-aarna-light rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <ShoppingBag className="text-aarna-primary mt-1 mr-3 flex-shrink-0" size={20} />
+                <p className="text-sm text-gray-700">
+                  Sign in to place orders, track your purchases, and save your favorite items to your wishlist.
+                </p>
+              </div>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
