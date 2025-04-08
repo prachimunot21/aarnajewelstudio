@@ -28,6 +28,7 @@ export interface User {
   email: string;
   phone?: string;
   role: 'admin' | 'customer';
+  wishlist?: string[]; // Array of product IDs
 }
 
 export interface Order {
@@ -48,3 +49,4 @@ export interface Order {
   paymentStatus: 'pending' | 'paid' | 'failed';
   createdAt: string;
 }
+

@@ -32,11 +32,11 @@ const Navbar: React.FC = () => {
       <div className="container-custom py-3 flex items-center justify-between">
         {/* Logo */}
         <div className="flex-shrink-0">
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex flex-col items-center">
             <h1 className="text-2xl font-serif font-bold text-aarna-primary">
               Aarna
-              <span className="text-xs align-text-top ml-1">Jewel Studio</span>
             </h1>
+            <span className="text-xs -mt-1">Jewel Studio</span>
           </Link>
         </div>
 
