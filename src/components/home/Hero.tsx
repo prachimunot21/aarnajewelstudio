@@ -62,9 +62,9 @@ const Hero: React.FC = () => {
           <div className="relative order-first md:order-last">
             <div className="aspect-square bg-white rounded-full p-4 shadow-xl overflow-hidden">
               <img
-                src="/placeholder.svg"
-                alt="Aarna Silver Jewelry Collection"
-                className="object-cover w-full h-full rounded-full"
+                src="/public/lovable-uploads/1ed44f49-30cc-4aad-8747-36a708d79eb8.png"
+                alt="Aarna Silver Jewelry Logo"
+                className="object-contain w-full h-full"
               />
               <div className="absolute -bottom-4 -right-4 bg-aarna-primary text-white p-4 rounded-full shadow-lg">
                 <div className="text-center">

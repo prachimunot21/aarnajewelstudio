@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { ShoppingCart, User, Menu, X, Heart, Search } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { ShoppingCart, User, Menu, X, Heart, Search, LogOut, Clock, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -9,14 +9,24 @@ import {
   SheetTrigger,
   SheetClose
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCart } from "@/lib/context";
 import { useAuth } from "@/lib/context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 const Navbar: React.FC = () => {
   const { totalItems } = useCart();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, logout } = useAuth();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const navLinks = [
@@ -27,16 +37,26 @@ const Navbar: React.FC = () => {
     { name: "Contact", path: "/contact" },
   ];
 
+  const handleLogout = () => {
+    logout();
+    toast.success("You've been logged out");
+    navigate("/");
+  };
+
+  const isAdmin = user?.role === "admin";
+
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
       <div className="container-custom py-3 flex items-center justify-between">
         {/* Logo */}
         <div className="flex-shrink-0">
           <Link to="/" className="flex flex-col items-center">
-            <h1 className="text-2xl font-serif font-bold text-aarna-primary">
-              Aarna
-            </h1>
-            <span className="text-xs -mt-1">Jewel Studio</span>
+            <img 
+              src="/public/lovable-uploads/1ed44f49-30cc-4aad-8747-36a708d79eb8.png"
+              alt="Aarna Jewel Studio Logo"
+              className="h-12 w-auto"
+            />
+            <span className="text-xs mt-1">Jewel Studio</span>
           </Link>
         </div>
 
@@ -80,16 +100,55 @@ const Navbar: React.FC = () => {
             </Button>
           </Link>
 
-          {/* User Account */}
-          <Link to={isLoggedIn ? "/account" : "/login"}>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="hover:bg-aarna-light hover:text-aarna-primary"
-            >
-              <User size={20} />
-            </Button>
-          </Link>
+          {/* User Account Dropdown */}
+          {isLoggedIn ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="hover:bg-aarna-light hover:text-aarna-primary"
+                >
+                  <User size={20} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>Manage Products</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/admin/orders")}>
+                      <Clock className="mr-2 h-4 w-4" />
+                      <span>Manage Orders</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={() => navigate("/account/orders")}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  <span>Order History</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hover:bg-aarna-light hover:text-aarna-primary"
+              >
+                <User size={20} />
+              </Button>
+            </Link>
+          )}
 
           {/* Cart */}
           <Link to="/cart" className="relative">
@@ -150,15 +209,37 @@ const Navbar: React.FC = () => {
                         <span className="font-medium">{user?.name}</span>
                       </p>
                       <SheetClose asChild>
-                        <Link to="/account">
+                        <Link to="/account/orders">
                           <Button 
                             variant="outline" 
                             className="w-full border-aarna-primary text-aarna-primary hover:bg-aarna-light"
                           >
-                            My Account
+                            <Clock size={16} className="mr-2" />
+                            Order History
                           </Button>
                         </Link>
                       </SheetClose>
+                      {isAdmin && (
+                        <SheetClose asChild>
+                          <Link to="/admin">
+                            <Button 
+                              variant="outline" 
+                              className="w-full border-aarna-primary text-aarna-primary hover:bg-aarna-light"
+                            >
+                              <Package size={16} className="mr-2" />
+                              Admin Dashboard
+                            </Button>
+                          </Link>
+                        </SheetClose>
+                      )}
+                      <Button 
+                        variant="destructive" 
+                        className="w-full"
+                        onClick={handleLogout}
+                      >
+                        <LogOut size={16} className="mr-2" />
+                        Logout
+                      </Button>
                     </div>
                   ) : (
                     <div className="flex flex-col space-y-2">

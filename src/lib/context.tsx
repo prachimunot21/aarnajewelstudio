@@ -165,9 +165,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // This is just a mock implementation - in a real app, use an API call
     const foundUser = users.find(u => u.email === email);
     
+    // Special case for admin login
+    if (email === "admin@aarna.com" && password === "admin123") {
+      const adminUser: User = {
+        id: "admin",
+        name: "Admin User",
+        email: "admin@aarna.com",
+        role: "admin"
+      };
+      
+      setUser(adminUser);
+      localStorage.setItem("aarna-user", JSON.stringify(adminUser));
+      toast.success("Logged in as Admin");
+      return true;
+    }
+    
     if (foundUser && password === "password") {  // Mock password validation
-      setUser(foundUser);
-      localStorage.setItem("aarna-user", JSON.stringify(foundUser));
+      const userWithRole: User = {
+        ...foundUser,
+        role: "customer"
+      };
+      
+      setUser(userWithRole);
+      localStorage.setItem("aarna-user", JSON.stringify(userWithRole));
       toast.success(`Welcome back, ${foundUser.name}!`);
       return true;
     }
@@ -205,7 +225,7 @@ export const useCart = () => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth must be used within an AuthContext");
   }
   return context;
 };

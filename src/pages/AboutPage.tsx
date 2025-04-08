@@ -40,7 +40,7 @@ const AboutPage: React.FC = () => {
                 <div className="w-full md:w-1/3">
                   <div className="aspect-square bg-aarna-light rounded-full overflow-hidden">
                     <img 
-                      src="/founder.jpg" 
+                      src="/public/lovable-uploads/09714401-54f1-4797-a5f2-214f1a30b92b.png" 
                       alt="Prateek Munot - Founder of Aarna Jewel Studio"
                       className="w-full h-full object-cover"
                       onError={(e) => {
