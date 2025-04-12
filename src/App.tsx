@@ -16,6 +16,8 @@ import AboutPage from "./pages/AboutPage";
 import WishlistPage from "./pages/WishlistPage";
 import AdminPage from "./pages/AdminPage";
 import AdminOrdersPage from "./pages/AdminOrdersPage";
+import AdminCollectionsPage from "./pages/AdminCollectionsPage";
+import DashboardPage from "./pages/DashboardPage";
 import AccountOrdersPage from "./pages/AccountOrdersPage";
 import CollectionsPage from "./pages/CollectionsPage";
 
@@ -38,8 +40,10 @@ const App = () => (
               <Route path="/about" element={<AboutPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/admin/orders" element={<AdminOrdersPage />} />
+              <Route path="/admin/collections" element={<AdminCollectionsPage />} />
               <Route path="/account/orders" element={<AccountOrdersPage />} />
               <Route path="/collections" element={<CollectionsPage />} />
               <Route path="/collections/:collectionId" element={<CollectionsPage />} />
