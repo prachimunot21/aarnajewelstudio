@@ -20,6 +20,11 @@ import AdminCollectionsPage from "./pages/AdminCollectionsPage";
 import DashboardPage from "./pages/DashboardPage";
 import AccountOrdersPage from "./pages/AccountOrdersPage";
 import CollectionsPage from "./pages/CollectionsPage";
+import FAQPage from "./pages/FAQPage";
+import ShippingPage from "./pages/ShippingPage";
+import JewelryCare from "./pages/JewelryCare";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +52,14 @@ const App = () => (
               <Route path="/account/orders" element={<AccountOrdersPage />} />
               <Route path="/collections" element={<CollectionsPage />} />
               <Route path="/collections/:collectionId" element={<CollectionsPage />} />
+              
+              {/* New pages */}
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/shipping-returns" element={<ShippingPage />} />
+              <Route path="/jewelry-care" element={<JewelryCare />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
