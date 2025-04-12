@@ -1,7 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Save, X, Upload, Plus } from "lucide-react";
+import { Save, X, Upload, Plus, Loader2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { categories } from "@/lib/data";
 import { placeholderImage } from "@/lib/data";
+import { createProduct } from "@/lib/api";
+import { useAuth } from "@/lib/context";
 
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isLoggedIn } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -28,6 +32,28 @@ const AdminPage: React.FC = () => {
   const [stockQuantity, setStockQuantity] = useState("50");
   const [images, setImages] = useState<string[]>([placeholderImage, placeholderImage]);
   const [imageInputs, setImageInputs] = useState<string[]>(["", ""]);
+  
+  // Check if user is admin
+  useEffect(() => {
+    if (!isLoggedIn) {
+      toast({
+        title: "Access Denied",
+        description: "Please log in to access this page",
+        variant: "destructive"
+      });
+      navigate("/login", { state: { redirect: "/admin" } });
+      return;
+    }
+    
+    if (user && user.role !== "admin") {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page",
+        variant: "destructive"
+      });
+      navigate("/");
+    }
+  }, [isLoggedIn, user, navigate, toast]);
   
   const handleImageChange = (index: number, value: string) => {
     const newInputs = [...imageInputs];
@@ -55,7 +81,7 @@ const AdminPage: React.FC = () => {
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -68,26 +94,68 @@ const AdminPage: React.FC = () => {
       return;
     }
     
-    // In a real app, this would send the data to your backend
-    toast({
-      title: "Product Added",
-      description: "The product has been successfully added",
-    });
-    
-    // Reset form
-    setName("");
-    setDescription("");
-    setPrice("");
-    setDiscountPrice("");
-    setCategory("");
-    setTags("");
-    setFeatured(false);
-    setBestseller(false);
-    setInStock(true);
-    setStockQuantity("50");
-    setImages([placeholderImage, placeholderImage]);
-    setImageInputs(["", ""]);
+    try {
+      setIsSubmitting(true);
+      
+      // Filter out empty image URLs
+      const productImages = imageInputs.filter(url => url.trim() !== '');
+      
+      if (productImages.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please add at least one product image",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Create product using the API
+      const tagArray = tags.split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag !== '');
+        
+      await createProduct({
+        name,
+        description,
+        price: parseFloat(price),
+        discountPrice: discountPrice ? parseFloat(discountPrice) : undefined,
+        images: productImages,
+        category,
+        tags: tagArray,
+        featured,
+        bestseller,
+        inStock,
+        stockQuantity: parseInt(stockQuantity)
+      });
+      
+      // Reset form
+      setName("");
+      setDescription("");
+      setPrice("");
+      setDiscountPrice("");
+      setCategory("");
+      setTags("");
+      setFeatured(false);
+      setBestseller(false);
+      setInStock(true);
+      setStockQuantity("50");
+      setImages([placeholderImage, placeholderImage]);
+      setImageInputs(["", ""]);
+    } catch (error) {
+      console.error("Error adding product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add product",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (!isLoggedIn || (user && user.role !== "admin")) {
+    return null; // Don't render anything while checking permissions
+  }
 
   return (
     <>
@@ -307,8 +375,20 @@ const AdminPage: React.FC = () => {
                   Cancel
                 </Button>
                 
-                <Button type="submit" className="bg-aarna-primary hover:bg-aarna-dark">
-                  <Save size={16} className="mr-2" /> Save Product
+                <Button 
+                  type="submit" 
+                  className="bg-aarna-primary hover:bg-aarna-dark"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="mr-2 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} className="mr-2" /> Save Product
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

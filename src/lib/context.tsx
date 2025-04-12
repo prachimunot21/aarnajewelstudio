@@ -1,8 +1,10 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Product, CartItem, User } from "./types";
-import { products, users, cart as initialCart } from "./data";
+import { products, cart as initialCart } from "./data";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchCurrentUser, signIn, signOut as apiSignOut } from "./api";
 
 interface CartContextType {
   cart: CartItem[];
@@ -16,6 +18,8 @@ interface CartContextType {
 
 interface AuthContextType {
   user: User | null;
+  session: any;
+  loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoggedIn: boolean;
@@ -147,67 +151,72 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Check for existing login on mount
+  // Initialize auth state and listen for changes
   useEffect(() => {
-    const savedUser = localStorage.getItem("aarna-user");
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error("Failed to parse user from localStorage", e);
-        setUser(null);
+    // First set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setSession(newSession);
+        
+        if (newSession) {
+          // Fetch the user profile when session changes
+          const userProfile = await fetchCurrentUser();
+          setUser(userProfile);
+        } else {
+          setUser(null);
+        }
       }
-    }
+    );
+
+    // Then check for existing session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
+        
+        if (initialSession) {
+          const userProfile = await fetchCurrentUser();
+          setUser(userProfile);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // This is just a mock implementation - in a real app, use an API call
-    const foundUser = users.find(u => u.email === email);
-    
-    // Special case for admin login
-    if (email === "admin@aarna.com" && password === "admin123") {
-      const adminUser: User = {
-        id: "admin",
-        name: "Admin User",
-        email: "admin@aarna.com",
-        role: "admin"
-      };
-      
-      setUser(adminUser);
-      localStorage.setItem("aarna-user", JSON.stringify(adminUser));
-      toast.success("Logged in as Admin");
-      return true;
+    try {
+      setLoading(true);
+      const data = await signIn(email, password);
+      return !!data;
+    } finally {
+      setLoading(false);
     }
-    
-    if (foundUser && password === "password") {  // Mock password validation
-      const userWithRole: User = {
-        ...foundUser,
-        role: "customer"
-      };
-      
-      setUser(userWithRole);
-      localStorage.setItem("aarna-user", JSON.stringify(userWithRole));
-      toast.success(`Welcome back, ${foundUser.name}!`);
-      return true;
-    }
-    
-    toast.error("Invalid email or password");
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("aarna-user");
-    toast.success("You've been logged out");
+  const logout = async () => {
+    await apiSignOut();
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
+      loading,
       login,
       logout,
-      isLoggedIn: !!user,
+      isLoggedIn: !!session
     }}>
       {children}
     </AuthContext.Provider>

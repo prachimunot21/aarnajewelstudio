@@ -11,6 +11,7 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Loader2
 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -25,124 +26,45 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/context";
 import { toast } from "sonner";
+import { fetchAllOrders, updateOrderStatus } from "@/lib/api";
 
 // Define order status types
-type OrderStatus = "all" | "processing" | "shipped" | "delivered" | "cancelled";
+type OrderStatus = "all" | "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
 // Define order interface
+interface OrderItem {
+  id: string;
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    images: string[];
+  };
+  quantity: number;
+  price: number;
+}
+
 interface Order {
   id: string;
-  customer: {
+  user_id: string;
+  profile: {
     name: string;
     email: string;
     phone: string;
   };
-  date: string;
+  created_at: string;
   status: Exclude<OrderStatus, "all">;
   total: number;
-  items: {
-    id: string;
+  order_items: OrderItem[];
+  shipping_address: {
     name: string;
-    price: number;
-    quantity: number;
-    image: string;
-  }[];
-  address: {
     street: string;
     city: string;
     state: string;
-    zipCode: string;
+    postalCode: string;
+    country: string;
   };
 }
-
-// Mock orders data
-const mockOrders: Order[] = [
-  {
-    id: "ORD-001",
-    customer: {
-      name: "Rahul Sharma",
-      email: "rahul.s@example.com",
-      phone: "+91 98765 43210",
-    },
-    date: "2025-04-01T10:30:00",
-    status: "processing",
-    total: 4999,
-    items: [
-      {
-        id: "PROD-1",
-        name: "Silver Leaf Pendant",
-        price: 2999,
-        quantity: 1,
-        image: "/placeholder.svg",
-      },
-      {
-        id: "PROD-4",
-        name: "Silver Anklet",
-        price: 1999,
-        quantity: 1,
-        image: "/placeholder.svg",
-      },
-    ],
-    address: {
-      street: "42 Green Avenue",
-      city: "Mumbai",
-      state: "Maharashtra",
-      zipCode: "400001",
-    },
-  },
-  {
-    id: "ORD-002",
-    customer: {
-      name: "Priya Patel",
-      email: "priya.p@example.com",
-      phone: "+91 77889 55664",
-    },
-    date: "2025-03-29T14:15:00",
-    status: "shipped",
-    total: 7599,
-    items: [
-      {
-        id: "PROD-6",
-        name: "Silver Bracelet Set",
-        price: 7599,
-        quantity: 1,
-        image: "/placeholder.svg",
-      },
-    ],
-    address: {
-      street: "78 Lake View Road",
-      city: "Bengaluru",
-      state: "Karnataka",
-      zipCode: "560001",
-    },
-  },
-  {
-    id: "ORD-003",
-    customer: {
-      name: "Amit Verma",
-      email: "amit.v@example.com",
-      phone: "+91 62345 67890",
-    },
-    date: "2025-03-25T09:45:00",
-    status: "delivered",
-    total: 9998,
-    items: [
-      {
-        id: "PROD-3",
-        name: "Pearl Earrings",
-        price: 4999,
-        quantity: 2,
-        image: "/placeholder.svg",
-      },
-    ],
-    address: {
-      street: "15 Sunshine Colony",
-      city: "Delhi",
-      state: "Delhi",
-      zipCode: "110001",
-    },
-  },
-];
 
 const AdminOrdersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -151,22 +73,42 @@ const AdminOrdersPage: React.FC = () => {
   // States
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus>("all");
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
+  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   
   useEffect(() => {
     // Redirect if not logged in or not admin
-    if (!isLoggedIn || user?.role !== "admin") {
+    if (!isLoggedIn) {
+      toast.error("You must be logged in to access this page");
+      navigate("/login", { state: { redirect: "/admin/orders" } });
+      return;
+    }
+    
+    if (user && user.role !== "admin") {
       toast.error("You don't have permission to access this page");
       navigate("/");
       return;
     }
     
-    // In a real app, fetch orders from API
-    // For now, use mock data
-    setOrders(mockOrders);
-    setFilteredOrders(mockOrders);
+    // Fetch orders from database
+    const loadOrders = async () => {
+      try {
+        setIsLoading(true);
+        const allOrders = await fetchAllOrders();
+        setOrders(allOrders as unknown as Order[]);
+        setFilteredOrders(allOrders as unknown as Order[]);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        toast.error("Failed to load orders");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadOrders();
   }, [isLoggedIn, navigate, user]);
   
   // Filter orders based on search term and status
@@ -181,8 +123,8 @@ const AdminOrdersPage: React.FC = () => {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
       result = result.filter(order => 
         order.id.toLowerCase().includes(lowerCaseSearchTerm) ||
-        order.customer.name.toLowerCase().includes(lowerCaseSearchTerm) ||
-        order.customer.email.toLowerCase().includes(lowerCaseSearchTerm)
+        (order.profile?.name || "").toLowerCase().includes(lowerCaseSearchTerm) ||
+        (order.profile?.email || "").toLowerCase().includes(lowerCaseSearchTerm)
       );
     }
     
@@ -197,15 +139,23 @@ const AdminOrdersPage: React.FC = () => {
     );
   };
   
-  const updateOrderStatus = (orderId: string, newStatus: Exclude<OrderStatus, "all">) => {
-    // In a real app, send API request to update order status
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
-    
-    toast.success(`Order #${orderId} status updated to ${newStatus}`);
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Exclude<OrderStatus, "all">) => {
+    try {
+      setUpdatingOrder(orderId);
+      await updateOrderStatus(orderId, newStatus);
+      
+      // Update local state
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast.error("Failed to update order status");
+    } finally {
+      setUpdatingOrder(null);
+    }
   };
   
   const formatDate = (dateString: string) => {
@@ -221,6 +171,7 @@ const AdminOrdersPage: React.FC = () => {
   
   const getStatusIcon = (status: Exclude<OrderStatus, "all">) => {
     switch (status) {
+      case "pending":
       case "processing":
         return <Clock className="h-5 w-5 text-blue-500" />;
       case "shipped":
@@ -231,6 +182,10 @@ const AdminOrdersPage: React.FC = () => {
         return <XCircle className="h-5 w-5 text-red-500" />;
     }
   };
+
+  if (!isLoggedIn || (user && user.role !== "admin")) {
+    return null; // Don't render anything while checking permissions
+  }
 
   return (
     <>
@@ -273,6 +228,7 @@ const AdminOrdersPage: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Orders</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="processing">Processing</SelectItem>
                     <SelectItem value="shipped">Shipped</SelectItem>
                     <SelectItem value="delivered">Delivered</SelectItem>
@@ -282,7 +238,12 @@ const AdminOrdersPage: React.FC = () => {
               </div>
             </div>
             
-            {filteredOrders.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-16">
+                <Loader2 className="mx-auto h-12 w-12 text-aarna-primary animate-spin mb-4" />
+                <h2 className="text-xl font-medium mb-2">Loading orders...</h2>
+              </div>
+            ) : filteredOrders.length === 0 ? (
               <div className="text-center py-16">
                 <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h2 className="text-xl font-medium mb-2">No orders found</h2>
@@ -303,14 +264,14 @@ const AdminOrdersPage: React.FC = () => {
                         {getStatusIcon(order.status)}
                         <div>
                           <h3 className="font-medium">{order.id}</h3>
-                          <p className="text-sm text-gray-500">{formatDate(order.date)}</p>
+                          <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center md:space-x-8 flex-wrap gap-y-2">
                         <div>
                           <p className="text-sm text-gray-500">Customer</p>
-                          <p className="font-medium">{order.customer.name}</p>
+                          <p className="font-medium">{order.profile?.name || "Unknown"}</p>
                         </div>
                         
                         <div>
@@ -339,17 +300,20 @@ const AdminOrdersPage: React.FC = () => {
                           <div>
                             <h4 className="font-medium mb-3">Order Items</h4>
                             <div className="space-y-3">
-                              {order.items.map((item, idx) => (
+                              {order.order_items?.map((item, idx) => (
                                 <div key={idx} className="flex items-center space-x-4">
                                   <div className="h-16 w-16 bg-gray-100 rounded overflow-hidden">
                                     <img 
-                                      src={item.image} 
-                                      alt={item.name}
+                                      src={item.product?.images?.[0] || "/placeholder.svg"}
+                                      alt={item.product?.name || "Product"}
                                       className="h-full w-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                      }}
                                     />
                                   </div>
                                   <div className="flex-1">
-                                    <p className="font-medium">{item.name}</p>
+                                    <p className="font-medium">{item.product?.name}</p>
                                     <p className="text-sm text-gray-500">
                                       {item.quantity} × ₹{item.price.toLocaleString()}
                                     </p>
@@ -372,50 +336,74 @@ const AdminOrdersPage: React.FC = () => {
                           <div>
                             <h4 className="font-medium mb-3">Customer Details</h4>
                             <div className="space-y-2">
-                              <p><span className="font-medium">Name:</span> {order.customer.name}</p>
-                              <p><span className="font-medium">Email:</span> {order.customer.email}</p>
-                              <p><span className="font-medium">Phone:</span> {order.customer.phone}</p>
+                              <p><span className="font-medium">Name:</span> {order.profile?.name || "N/A"}</p>
+                              <p><span className="font-medium">Email:</span> {order.profile?.email || "N/A"}</p>
+                              <p><span className="font-medium">Phone:</span> {order.profile?.phone || "N/A"}</p>
                             </div>
                             
                             <h4 className="font-medium mt-4 mb-3">Shipping Address</h4>
                             <div className="space-y-1">
-                              <p>{order.address.street}</p>
-                              <p>{order.address.city}, {order.address.state}</p>
-                              <p>{order.address.zipCode}</p>
+                              <p>{order.shipping_address?.street || "N/A"}</p>
+                              <p>{order.shipping_address?.city || "N/A"}, {order.shipping_address?.state || "N/A"}</p>
+                              <p>{order.shipping_address?.postalCode || "N/A"}</p>
+                              <p>{order.shipping_address?.country || "N/A"}</p>
                             </div>
                             
                             <h4 className="font-medium mt-4 mb-3">Update Status</h4>
                             <div className="flex flex-wrap gap-2">
                               <Button 
+                                variant={order.status === "pending" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handleUpdateOrderStatus(order.id, "pending")}
+                                disabled={order.status === "pending" || updatingOrder === order.id}
+                              >
+                                {updatingOrder === order.id ? (
+                                  <Loader2 size={14} className="mr-1 animate-spin" />
+                                ) : null}
+                                Pending
+                              </Button>
+                              <Button 
                                 variant={order.status === "processing" ? "default" : "outline"}
                                 size="sm"
-                                onClick={() => updateOrderStatus(order.id, "processing")}
-                                disabled={order.status === "processing"}
+                                onClick={() => handleUpdateOrderStatus(order.id, "processing")}
+                                disabled={order.status === "processing" || updatingOrder === order.id}
                               >
+                                {updatingOrder === order.id ? (
+                                  <Loader2 size={14} className="mr-1 animate-spin" />
+                                ) : null}
                                 Processing
                               </Button>
                               <Button 
                                 variant={order.status === "shipped" ? "default" : "outline"}
                                 size="sm"
-                                onClick={() => updateOrderStatus(order.id, "shipped")}
-                                disabled={order.status === "shipped"}
+                                onClick={() => handleUpdateOrderStatus(order.id, "shipped")}
+                                disabled={order.status === "shipped" || updatingOrder === order.id}
                               >
+                                {updatingOrder === order.id ? (
+                                  <Loader2 size={14} className="mr-1 animate-spin" />
+                                ) : null}
                                 Shipped
                               </Button>
                               <Button 
                                 variant={order.status === "delivered" ? "default" : "outline"}
                                 size="sm"
-                                onClick={() => updateOrderStatus(order.id, "delivered")}
-                                disabled={order.status === "delivered"}
+                                onClick={() => handleUpdateOrderStatus(order.id, "delivered")}
+                                disabled={order.status === "delivered" || updatingOrder === order.id}
                               >
+                                {updatingOrder === order.id ? (
+                                  <Loader2 size={14} className="mr-1 animate-spin" />
+                                ) : null}
                                 Delivered
                               </Button>
                               <Button 
                                 variant={order.status === "cancelled" ? "destructive" : "outline"}
                                 size="sm"
-                                onClick={() => updateOrderStatus(order.id, "cancelled")}
-                                disabled={order.status === "cancelled"}
+                                onClick={() => handleUpdateOrderStatus(order.id, "cancelled")}
+                                disabled={order.status === "cancelled" || updatingOrder === order.id}
                               >
+                                {updatingOrder === order.id ? (
+                                  <Loader2 size={14} className="mr-1 animate-spin" />
+                                ) : null}
                                 Cancel
                               </Button>
                             </div>
