@@ -34,10 +34,14 @@ const LoginPage: React.FC = () => {
       if (result) {
         // Auto-login after successful registration
         await login(email, password);
+        navigate(redirectPath);
       }
     } else {
       // Handle login
-      await login(email, password);
+      const success = await login(email, password);
+      if (success) {
+        navigate(redirectPath);
+      }
     }
   };
 

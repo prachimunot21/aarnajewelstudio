@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { ShoppingCart, User, Menu, X, Heart, Search, LogOut, Clock, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,10 +37,10 @@ const Navbar: React.FC = () => {
     { name: "Contact", path: "/contact" },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success("You've been logged out");
-    navigate("/");
+    navigate("/login");
   };
 
   const isAdmin = user?.role === "admin";

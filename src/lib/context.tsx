@@ -5,6 +5,7 @@ import { products, cart as initialCart } from "./data";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchCurrentUser, signIn, signOut as apiSignOut } from "./api";
+import { useNavigate } from "react-router-dom";
 
 interface CartContextType {
   cart: CartItem[];
@@ -207,6 +208,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await apiSignOut();
+    // Note: We don't need to call navigate here as the auth state change will be detected
+    // by the components and they will handle redirection appropriately
   };
 
   return (
